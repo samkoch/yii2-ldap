@@ -1,0 +1,25 @@
+{
+  "name": "samkoch/yii2-ldap",
+  "description": "Yii2 LDAP helper class",
+  "type": "yii2-extension",
+  "keywords": [
+    "yii2",
+    "extension",
+    "ldap"
+  ],
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Samuel Koch",
+      "email": "samuel@kochmail.com"
+    }
+  ],
+  "require": {
+    "yiisoft/yii2": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "samkoch\\yii2ldap\\": "src/"
+    }
+  }
+}
