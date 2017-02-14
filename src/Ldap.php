@@ -32,6 +32,15 @@ class Ldap extends Component
             $this->baseDn = $this->config['baseDn'];
         }
     }
+    
+    public function validateUserCredentials($username, $password) {
+        try {
+            $this->ldapLink = ldap_connect($this->config['host'], $this->config['port']);
+            return @ldap_bind($this->ldapLink, $username, $password);
+        } catch (Exception $e) {
+            throw new Exception("LDAP: Cannot connect to $this->config['host']: $e->getMessage()");
+        }
+    }
 
     public function getConnection()
     {
