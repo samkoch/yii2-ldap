@@ -354,7 +354,7 @@ class Ldap extends Component
     ) {
         if (is_array($members)) {
             $res = array();
-            //remote count attribute
+            //remove count attribute
             if (array_key_exists('count', $members)) {
                 unset($members['count']);
             }
@@ -402,7 +402,7 @@ class Ldap extends Component
                         }
                     }
 
-                    //only add member to result list if all condition matched
+                    //only add member to result list if all conditions are met
                     if (array_search(false, $filterRes) === false) {
                         $res[$key] = $member;
                     }
@@ -432,8 +432,7 @@ class Ldap extends Component
      * @param string $distinguishedName
      * @param array $attributes
      */
-    public
-    function getAttributesByDistinguishedName(
+    public function getAttributesByDistinguishedName(
       $baseDn,
       $distinguishedName,
       $attributes
