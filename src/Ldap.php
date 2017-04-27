@@ -47,9 +47,9 @@ class Ldap extends Component
         return $this->ldapLink;
     }
 
-    public function search($baseDn, $filter, $attributes)
+    public function search($filter, $attributes)
     {
-        return ldap_search($this->ldapLink, $baseDn, $filter, $attributes);
+        return ldap_search($this->ldapLink, $this->baseDn, $filter, $attributes);
     }
 
     public function getEntries($filter, $attributes)
@@ -68,11 +68,23 @@ class Ldap extends Component
         return $utf8encode ? utf8_encode($value) : $value;
     }
 
+    public function getMultiValue($data, $attribute, $utf8encode = true)
+    {
+        $values = $data[0][$attribute];
+        $res = [];
+        foreach($values as $key => $value) {
+            if($key !== 'count') {
+                $res[] = $utf8encode ? utf8_encode($value) : $value;
+            }
+        }
+
+        return $res;
+    }
+
 
     /**
      * Shortcut function for getting groups and resolving it's users.
      *
-     * @param string $baseDn
      * @param string $filter
      * @param array $groupAttributes
      * @param array $rangeAttributes
@@ -80,9 +92,9 @@ class Ldap extends Component
      * @param array $memberFilterGroups
      * @param array $memberFilterUser
      */
-    public function getResolvedUsers($baseDn, $filter, $groupAttributes, $rangeAttributes, $userAttributes, $memberFilterGroups, $memberFilterUser)
+    public function getResolvedUsers($filter, $groupAttributes, $rangeAttributes, $userAttributes, $memberFilterGroups, $memberFilterUser)
     {
-        $this->getGroupsRecursive($baseDn, $filter, $groupAttributes, $rangeAttributes, $userAttributes, $memberFilterGroups, $memberFilterUser);
+        $this->getGroupsRecursive($filter, $groupAttributes, $rangeAttributes, $userAttributes, $memberFilterGroups, $memberFilterUser);
         return $this->resolveUsers($userAttributes, $groupAttributes);
     }
 
@@ -90,14 +102,13 @@ class Ldap extends Component
     /**
      * Retrieve groups from Active Directory.
      *
-     * @param string $baseDn
      * @param string $filter
      * @param array $attributes
      * @param array $rangeAttributes
      */
-    public function getGroups($baseDn = null, $filter, $attributes, $rangeAttributes = array())
+    public function getGroups($filter, $attributes, $rangeAttributes = array())
     {
-        if ($res = ldap_search($this->ldapLink, (isset($baseDn) ? $baseDn : $this->baseDn), $filter, array_merge($attributes, $rangeAttributes))) {
+        if ($res = ldap_search($this->ldapLink, $this->baseDn, $filter, array_merge($attributes, $rangeAttributes))) {
             $data = ldap_get_entries($this->ldapLink, $res);
             if ($data['count'] > 0) {
                 unset($data['count']);
@@ -115,7 +126,7 @@ class Ldap extends Component
                                 $lastPage = false;
                                 while (!$lastPage) {
                                     $rangeAttributePage = $rangeAttribute . ';range=' . $position . '-' . ($position + 1499);
-                                    $res = ldap_search($this->ldapLink, (isset($baseDn) ? $baseDn : $this->baseDn), $filter, array($rangeAttributePage));
+                                    $res = ldap_search($this->ldapLink, $this->baseDn, $filter, array($rangeAttributePage));
                                     $rangeAttributeData = ldap_get_entries($this->ldapLink, $res);
 
                                     $rangeAttributePageLast = $rangeAttribute . ';range=' . $position . '-*';
@@ -144,7 +155,6 @@ class Ldap extends Component
     /**
      * Recursive function to retrieve all member groups.
      *
-     * @param string $baseDn
      * @param string $filter
      * @param array $groupAttributes
      * @param array $rangeAttributes
@@ -152,7 +162,7 @@ class Ldap extends Component
      * @param array $memberFilterGroups
      * @param array $memberFilterUser
      */
-    public function getGroupsRecursive($baseDn, $filter, $groupAttributes, $rangeAttributes, $userAttributes, $memberFilterGroups, $memberFilterUser)
+    public function getGroupsRecursive($filter, $groupAttributes, $rangeAttributes, $userAttributes, $memberFilterGroups, $memberFilterUser)
     {
         //check and add some mandatory attributes if necessary
         $mandatoryGroupAttributes = array('objectGUID', 'distinguishedName', 'managedBy', 'msExchCoManagedByLink');
@@ -162,7 +172,7 @@ class Ldap extends Component
         $rangeAttributes = array_unique(array_merge($rangeAttributes, $mandatoryRangeAttributes));
 
         //retrieve groups
-        $groups = $this->getGroups($baseDn, $filter, $groupAttributes, $rangeAttributes);
+        $groups = $this->getGroups($filter, $groupAttributes, $rangeAttributes);
         if ($groups) {
             foreach ($groups as $key => $group) {
                 $groupDistinguishedName = $group['distinguishedname'][0];
@@ -204,16 +214,18 @@ class Ldap extends Component
                         }
 
                         //get user attributes
-                        $userData = $this->getAttributesByDistinguishedName($baseDn, $user, $userAttributes);
+                        $userData = $this->getUserAttributesByDistinguishedName($user, $userAttributes);
 
-                        //process and add them to class data array
-                        $userAttributesValues = array();
-                        foreach ($userAttributes as $userAttribute) {
-                            $userAttributesValues[$userAttribute] = $userData[0][strtolower($userAttribute)][0];
+                        if($userData) {
+                            //process and add them to class data array
+                            $userAttributesValues = array();
+                            foreach ($userAttributes as $userAttribute) {
+                                $userAttributesValues[$userAttribute] = $userData[0][strtolower($userAttribute)][0];
 
-                            //objectGUID needs special processing
-                            if ('objectGUID' == $userAttribute) {
-                                $userAttributesValues[$userAttribute] = $this->getGUID($userData[0][strtolower($userAttribute)][0]);
+                                //objectGUID needs special processing
+                                if ('objectGUID' == $userAttribute) {
+                                    $userAttributesValues[$userAttribute] = $this->getGUID($userData[0][strtolower($userAttribute)][0]);
+                                }
                             }
                         }
                         $this->data[md5($groupDistinguishedName)]['users'][md5($user)] = $userAttributesValues;
@@ -235,7 +247,7 @@ class Ldap extends Component
 
                         //call this fuction with the current member group recursive
                         $filter = '(&(objectClass=Group)(distinguishedName=' . $this->escapeFilterValue($membersGroup) . '))';
-                        $this->getGroupsRecursive($baseDn, $filter, $groupAttributes, $rangeAttributes, $userAttributes, $memberFilterGroups,
+                        $this->getGroupsRecursive($filter, $groupAttributes, $rangeAttributes, $userAttributes, $memberFilterGroups,
                           $memberFilterUser);
                     }
                 }
@@ -354,7 +366,7 @@ class Ldap extends Component
     ) {
         if (is_array($members)) {
             $res = array();
-            //remove count attribute
+            //remote count attribute
             if (array_key_exists('count', $members)) {
                 unset($members['count']);
             }
@@ -402,7 +414,7 @@ class Ldap extends Component
                         }
                     }
 
-                    //only add member to result list if all conditions are met
+                    //only add member to result list if all condition matched
                     if (array_search(false, $filterRes) === false) {
                         $res[$key] = $member;
                     }
@@ -428,23 +440,62 @@ class Ldap extends Component
     /**
      * Get user attributes by user distinguishedName.
      *
-     * @param string $baseDn
      * @param string $distinguishedName
      * @param array $attributes
+     * @return array|boolean
      */
-    public function getAttributesByDistinguishedName(
-      $baseDn,
-      $distinguishedName,
-      $attributes
-    ) {
-        $filter = "(&(objectClass=User)(distinguishedName=" . $this->escapeFilterValue($distinguishedName) . "))";
-        if ($res = ldap_search($this->ldapLink, $baseDn, $filter, $attributes)) {
+    public function getUserAttributesByDistinguishedName($distinguishedName, $attributes) {
+        return $this->getUserAttributesByIdUserAttribute('distinguishedName', $distinguishedName, $attributes);
+    }
+
+    /**
+     * Get user attributes by sAMAccountName.
+     *
+     * @param string $distinguishedName
+     * @param array $attributes
+     * @return array|boolean
+     */
+    public function getUserAttributesBySAMAccountName($sAMAccountName, $attributes) {
+        return $this->getUserAttributesByIdUserAttribute('sAMAccountName', $sAMAccountName, $attributes);
+    }
+
+    /**
+     * Get user attributes by email.
+     *
+     * @param string $distinguishedName
+     * @param array $attributes
+     * @return array|boolean
+     */
+    public function getUserAttributesByEmail($email, $attributes) {
+        return $this->getUserAttributesByIdUserAttribute('mail', $email, $attributes);
+    }
+
+    /**
+     * Get user attributes by id user attribute.
+     *
+     * @param string $distinguishedName
+     * @param array $attributes
+     * @return array|boolean
+     */
+    protected function getUserAttributesByIdUserAttribute($idUserAttributeName, $idUserAttributeValue, $attributes) {
+        if(!is_array($attributes)) {
+            $singleAttribute = $attributes;
+            $attributes = [];
+            $attributes[] = $singleAttribute;
+        }
+
+        $filter = "(&(objectClass=User)(".$idUserAttributeName."=" . $this->escapeFilterValue($idUserAttributeValue) . "))";
+        if ($res = ldap_search($this->ldapLink, $this->baseDn, $filter, $attributes)) {
             $data = ldap_get_entries($this->ldapLink, $res);
             if ($data['count'] == 1) {
+                if(isset($singleAttribute)) {
+                    return $data[0][strtolower($singleAttribute)][0];
+                }
                 return $data;
             }
         }
-        return array();
+
+        return false;
     }
 
 }
