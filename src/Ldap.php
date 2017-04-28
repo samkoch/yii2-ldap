@@ -473,7 +473,8 @@ class Ldap extends Component
     /**
      * Get user attributes by id user attribute.
      *
-     * @param string $distinguishedName
+     * @param string $idUserAttributeName
+     * @param string $idUserAttributeValue
      * @param array $attributes
      * @return array|boolean
      */
