@@ -494,8 +494,6 @@ class Ldap extends Component
                 return $data;
             }
         }
-
-        return false;
     }
 
 }
