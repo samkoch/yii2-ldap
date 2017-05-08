@@ -72,9 +72,11 @@ class Ldap extends Component
     {
         $values = $data[0][$attribute];
         $res = [];
-        foreach($values as $key => $value) {
-            if($key !== 'count') {
-                $res[] = $utf8encode ? utf8_encode($value) : $value;
+        if(is_array($values) && count($values)) {
+            foreach ($values as $key => $value) {
+                if ($key !== 'count') {
+                    $res[] = $utf8encode ? utf8_encode($value) : $value;
+                }
             }
         }
 
