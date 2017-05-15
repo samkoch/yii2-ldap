@@ -96,6 +96,7 @@ class Ldap extends Component
      */
     public function getResolvedUsers($filter, $groupAttributes, $rangeAttributes, $userAttributes, $memberFilterGroups, $memberFilterUser)
     {
+        $this->data = [];
         $this->getGroupsRecursive($filter, $groupAttributes, $rangeAttributes, $userAttributes, $memberFilterGroups, $memberFilterUser);
         return $this->resolveUsers($userAttributes, $groupAttributes);
     }
