@@ -463,6 +463,17 @@ class Ldap extends Component
     }
 
     /**
+     * Get user attributes by cn (common name).
+     *
+     * @param string $cn
+     * @param array $attributes
+     * @return array|boolean
+     */
+    public function getUserAttributesByCn($cn, $attributes) {
+        return $this->getUserAttributesByIdUserAttribute('cn', $cn, $attributes);
+    }
+
+    /**
      * Get user attributes by email.
      *
      * @param string $distinguishedName
