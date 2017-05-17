@@ -448,7 +448,7 @@ class Ldap extends Component
      * @return array|boolean
      */
     public function getUserAttributesByDistinguishedName($distinguishedName, $attributes) {
-        return $this->getUserAttributesByIdUserAttribute('distinguishedName', $distinguishedName, $attributes);
+        return $this->getAttributesByIdUserAttribute('distinguishedName', $distinguishedName, $attributes);
     }
 
     /**
@@ -459,7 +459,7 @@ class Ldap extends Component
      * @return array|boolean
      */
     public function getUserAttributesBySAMAccountName($sAMAccountName, $attributes) {
-        return $this->getUserAttributesByIdUserAttribute('sAMAccountName', $sAMAccountName, $attributes);
+        return $this->getAttributesByIdUserAttribute('sAMAccountName', $sAMAccountName, $attributes);
     }
 
     /**
@@ -470,7 +470,7 @@ class Ldap extends Component
      * @return array|boolean
      */
     public function getUserAttributesByCn($cn, $attributes) {
-        return $this->getUserAttributesByIdUserAttribute('cn', $cn, $attributes);
+        return $this->getAttributesByIdUserAttribute('cn', $cn, $attributes);
     }
 
     /**
@@ -481,7 +481,52 @@ class Ldap extends Component
      * @return array|boolean
      */
     public function getUserAttributesByEmail($email, $attributes) {
-        return $this->getUserAttributesByIdUserAttribute('mail', $email, $attributes);
+        return $this->getAttributesByIdUserAttribute('mail', $email, $attributes);
+    }
+
+
+    /**
+     * Get group attributes by user distinguishedName.
+     *
+     * @param string $distinguishedName
+     * @param array $attributes
+     * @return array|boolean
+     */
+    public function getGroupAttributesByDistinguishedName($distinguishedName, $attributes) {
+        return $this->getAttributesByIdUserAttribute('distinguishedName', $distinguishedName, $attributes, 'group');
+    }
+
+    /**
+     * Get group attributes by sAMAccountName.
+     *
+     * @param string $distinguishedName
+     * @param array $attributes
+     * @return array|boolean
+     */
+    public function getGroupAttributesBySAMAccountName($sAMAccountName, $attributes) {
+        return $this->getAttributesByIdUserAttribute('sAMAccountName', $sAMAccountName, $attributes, 'group');
+    }
+
+    /**
+     * Get group attributes by cn (common name).
+     *
+     * @param string $cn
+     * @param array $attributes
+     * @return array|boolean
+     */
+    public function getGroupAttributesByCn($cn, $attributes) {
+        return $this->getAttributesByIdUserAttribute('cn', $cn, $attributes, 'group');
+    }
+
+    /**
+     * Get group attributes by email.
+     *
+     * @param string $distinguishedName
+     * @param array $attributes
+     * @return array|boolean
+     */
+    public function getGroupAttributesByEmail($email, $attributes) {
+        return $this->getAttributesByIdUserAttribute('mail', $email, $attributes, 'group');
     }
 
     /**
@@ -492,14 +537,14 @@ class Ldap extends Component
      * @param string|array $attributes
      * @return array|boolean
      */
-    protected function getUserAttributesByIdUserAttribute($idUserAttributeName, $idUserAttributeValue, $attributes) {
+    protected function getAttributesByIdUserAttribute($idUserAttributeName, $idUserAttributeValue, $attributes, $type = 'user') {
         if(!is_array($attributes)) {
             $singleAttribute = $attributes;
             $attributes = [];
             $attributes[] = $singleAttribute;
         }
 
-        $filter = "(&(objectClass=User)(".$idUserAttributeName."=" . $this->escapeFilterValue($idUserAttributeValue) . "))";
+        $filter = "(&(objectClass=".$type.")(".$idUserAttributeName."=" . $this->escapeFilterValue($idUserAttributeValue) . "))";
         if ($res = ldap_search($this->ldapLink, $this->baseDn, $filter, $attributes)) {
             $data = ldap_get_entries($this->ldapLink, $res);
             if ($data['count'] == 1) {
