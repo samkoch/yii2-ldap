@@ -292,7 +292,7 @@ class Ldap extends Component
                     foreach ($groupAttributes as $groupAttribute) {
                         $groupAttributeValues[$groupAttribute] = $data[$groupAttribute];
                     }
-                    $res[md5($user['distinguishedName'])]['groups'][md5($data['distinguishedName'])] = utf8_encode($groupAttributeValues);
+                    $res[md5($user['distinguishedName'])]['groups'][md5($data['distinguishedName'])] = $groupAttributeValues;
 
                     //climb up tree and get all groups a user belongs to
                     $parent = $data['parent'];
